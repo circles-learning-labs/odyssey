@@ -1,5 +1,9 @@
 defmodule Odyssey.ObanWorker do
-  use Oban.Worker, queue: :workers
+  use Oban.Worker,
+    queue: :workers,
+    unique: [
+      keys: [:id]
+    ]
 
   alias Odyssey.DB.WorkflowRun
 
