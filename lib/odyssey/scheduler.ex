@@ -1,8 +1,7 @@
 defmodule Odyssey.Scheduler do
-  alias Oban.Job
   alias Odyssey.ObanWorker
 
-  def schedule(workflow, opts \\ []) do
-    ObanWorker.new(%{id: workflow.id}, opts)
+  def schedule(workflow_run, opts \\ []) do
+    ObanWorker.new(%{id: workflow_run.id}, opts)
   end
 end

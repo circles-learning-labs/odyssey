@@ -4,4 +4,4 @@ config :odyssey, ecto_repos: [Odyssey.Repo]
 
 config :odyssey, Oban,
   repo: Odyssey.Repo,
-  queues: [workers: 10]
+  queues: [odyssey_workers: 10]

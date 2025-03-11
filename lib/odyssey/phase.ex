@@ -1,13 +1,10 @@
 defmodule Odyssey.Phase do
   alias Odyssey.State
 
-  alias Odyssey.Phase.Action
-  alias Odyssey.Phase.Pause
-
   @type result ::
           {:ok, State.t()}
           | {:suspend, State.t()}
-          | {{:suspend, non_neg_integer}, State.t()}
+          | {{:suspend, non_neg_integer()}, State.t()}
           | {:stop, State.t()}
           | {:error, term(), State.t()}
 
@@ -26,6 +23,6 @@ defmodule Odyssey.Phase do
         }
 
   def run(phase, state) do
-    apply(phase., :run, [phase, state])
+    apply(phase.module, :run, [phase.args, state])
   end
 end
