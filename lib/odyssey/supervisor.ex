@@ -12,5 +12,4 @@ defmodule Odyssey.Supervisor do
     ]
     |> Supervisor.init(strategy: :one_for_one)
   end
-
 end
