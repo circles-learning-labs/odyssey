@@ -8,7 +8,7 @@ defmodule Odyssey.Supervisor do
   def init(_) do
     [
       {Odyssey.Repo, []},
-      {Oban, Application.fetch_env!(:circles_web, Oban)}
+      {Oban, Application.fetch_env!(:odyssey, Oban)}
     ]
     |> Supervisor.init(strategy: :one_for_one)
   end

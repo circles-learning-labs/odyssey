@@ -1,2 +1,2 @@
 import Config
-config :odyssey, Oban, testing: :manual
+#config :odyssey, Oban, testing: :manual

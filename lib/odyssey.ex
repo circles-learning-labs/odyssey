@@ -4,6 +4,6 @@ defmodule Odyssey do
   """
 
   def start(_type, _args) do
-    Odyssey.Repo.start_link()
+    Odyssey.Supervisor.start_link()
   end
 end

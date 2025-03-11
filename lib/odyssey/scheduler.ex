@@ -4,6 +4,7 @@ defmodule Odyssey.Scheduler do
   def schedule(workflow_run, opts \\ []) do
     %{id: workflow_run.id}
     |> ObanWorker.new(opts)
+    |> IO.inspect()
     |> Oban.insert()
   end
 end

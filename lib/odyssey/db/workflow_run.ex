@@ -8,11 +8,13 @@ defmodule Odyssey.DB.WorkflowRun do
   alias Odyssey.State
   alias Odyssey.Workflow
 
+  @type status :: :running | :suspended | :paused | :completed | :error
+
   schema "odyssey_workflow_runs" do
-    field(:status, Ecto.Enum, values: [:running, :suspended, :paused, :completed])
+    field(:status, Ecto.Enum, values: [:running, :suspended, :paused, :completed, :error])
     field(:next_phase, :integer)
-    field(:started_at, :utc_datetime)
-    field(:ended_at, :utc_datetime)
+    field(:started_at, :utc_datetime_usec)
+    field(:ended_at, :utc_datetime_usec)
     field(:phases, Term)
     field(:state, Term)
     timestamps()
@@ -23,17 +25,18 @@ defmodule Odyssey.DB.WorkflowRun do
           id: integer(),
           next_phase: integer(),
           started_at: DateTime.t(),
+          ended_at: DateTime.t() | nil,
           state: State.t(),
           phases: Workflow.t(),
-          status: :running | :suspended | :paused | :completed,
+          status: status(),
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
         }
 
   def changeset(workflow_run, attrs) do
     workflow_run
-    |> cast(attrs, [:status, :next_phase, :started_at, :ended_at, :state])
-    |> validate_required([:status, :next_phase, :started_at, :state])
+    |> cast(attrs, [:status, :next_phase, :started_at, :ended_at, :state, :phases])
+    |> validate_required([:status, :next_phase, :started_at, :state, :phases])
   end
 
   def insert_new(workflow, state) do
@@ -48,6 +51,7 @@ defmodule Odyssey.DB.WorkflowRun do
     |> Repo.insert!()
   end
 
+  @spec update(t(), status(), State.t()) :: t()
   def update(workflow_run, new_status, state) do
     next_phase = workflow_run.next_phase + 1
 

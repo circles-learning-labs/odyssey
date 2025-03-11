@@ -8,20 +8,20 @@ defmodule Odyssey.Workflow do
   @type id :: term()
   @type t :: [Phase.t()]
 
-  @spec run(t(), State.t()) :: WorkflowRun.t()
-  def run(workflow, state) do
+  @spec start(t(), State.t()) :: WorkflowRun.t()
+  def start(workflow, state) do
     workflow_run = WorkflowRun.insert_new(workflow, state)
-    Scheduler.schedule(workflow_run)
+    {:ok, _} = Scheduler.schedule(workflow_run)
     workflow_run
   end
 
-  @spec run_next_phase(WorkflowRun.t()) :: :ok
+  @spec run_next_phase(WorkflowRun.t()) :: WorkflowRun.t()
   def run_next_phase(
         %WorkflowRun{next_phase: next_phase, phases: phases, state: state} = workflow_run
       ) do
     case Enum.at(phases, next_phase) do
       nil ->
-        :ok
+        WorkflowRun.update(workflow_run, :completed, state)
 
       phase ->
         phase
@@ -30,20 +30,17 @@ defmodule Odyssey.Workflow do
     end
   end
 
-  @spec stop(id()) :: :ok
+  @spec stop(id()) :: WorkflowRun.t() | nil
   def stop(id) do
     Repo.transaction(fn ->
       case Repo.get(WorkflowRun, id) do
-        %WorkflowRun{status: status, state: state} = workflow
+        %WorkflowRun{status: status, state: state} = workflow_run
         when status in [:running, :suspended] ->
-          workflow
-          |> WorkflowRun.update(:completed, state)
-          |> Repo.update()
-
+          WorkflowRun.update(workflow_run, :completed, state)
           :ok
 
         nil ->
-          :ok
+          nil
       end
     end)
   end
@@ -61,35 +58,22 @@ defmodule Odyssey.Workflow do
   end
 
   defp handle_phase_result({:suspend, state}, workflow_run) do
-    workflow_run
-    |> WorkflowRun.update(:suspended, state)
+    WorkflowRun.update(workflow_run, :suspended, state)
 
     # In this case it is up to the job to handle its own resumption
-
-    :ok
   end
 
   defp handle_phase_result({{:suspend, period}, state}, workflow_run) do
-    workflow_run
-    |> WorkflowRun.update(:suspended, state)
-
-    next_run_at = DateTime.add(DateTime.utc_now(), period, :second)
-    Scheduler.schedule(workflow_run, scheduled_at: next_run_at)
-
-    :ok
+    WorkflowRun.update(workflow_run, :suspended, state)
+    Scheduler.schedule(workflow_run, schedule_in: period)
   end
 
   defp handle_phase_result({:stop, state}, workflow_run) do
-    workflow_run
-    |> WorkflowRun.update(:completed, state)
-
-    :ok
+    WorkflowRun.update(workflow_run, :completed, state)
   end
 
   defp handle_phase_result({:error, reason, state}, workflow_run) do
-    workflow_run
-    |> WorkflowRun.update(:error, state)
-
+    WorkflowRun.update(workflow_run, :error, state)
     {:error, reason}
   end
 end

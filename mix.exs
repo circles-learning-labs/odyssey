@@ -8,7 +8,15 @@ defmodule Odyssey.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        "coveralls.cobertura": :test
+      ]
     ]
   end
 
@@ -24,8 +32,9 @@ defmodule Odyssey.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.0"},
-      {:eventually, "~> 1.1", only: :test},
-      {:igniter, "~> 0.5", only: [:dev]},
+      {:eventually, "~> 1.1", only: :test, runtime: false},
+      {:excoveralls, "~> 0.18", only: :test, runtime: false},
+      {:igniter, "~> 0.5", only: [:dev], runtime: false},
       {:oban, "~> 2.19"},
       {:postgrex, "~> 0.20"}
     ]
