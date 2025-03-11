@@ -8,6 +8,7 @@ defmodule Odyssey.Repo.Migrations.Initial do
       add :started_at, :utc_datetime
       add :ended_at, :utc_datetime
       add :state, :binary
+      add :phases, :binary
       timestamps()
     end
   end

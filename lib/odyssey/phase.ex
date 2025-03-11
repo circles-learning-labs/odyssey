@@ -11,9 +11,9 @@ defmodule Odyssey.Phase do
   @callback run(term(), State.t()) :: result()
 
   defstruct [
-    :name,
     :module,
-    :args
+    :args,
+    name: ""
   ]
 
   @type t :: %__MODULE__{

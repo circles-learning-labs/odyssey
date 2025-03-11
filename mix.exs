@@ -7,12 +7,14 @@ defmodule Odyssey.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      elixirc_paths: elixirc_paths(Mix.env())
     ]
   end
 
   def application do
     [
+      mod: {Odyssey, []},
       extra_applications: [:logger]
     ]
   end
@@ -22,8 +24,13 @@ defmodule Odyssey.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.0"},
+      {:eventually, "~> 1.1", only: :test},
+      {:igniter, "~> 0.5", only: [:dev]},
       {:oban, "~> 2.19"},
       {:postgrex, "~> 0.20"}
     ]
   end
+
+  defp elixirc_paths(:test), do: elixirc_paths(:dev) ++ ["test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end

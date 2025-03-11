@@ -45,7 +45,7 @@ defmodule Odyssey.DB.WorkflowRun do
       state: state,
       phases: workflow
     })
-    |> Repo.insert()
+    |> Repo.insert!()
   end
 
   def update(workflow_run, new_status, state) do
