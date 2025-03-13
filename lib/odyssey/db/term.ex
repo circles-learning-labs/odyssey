@@ -1,4 +1,8 @@
 defmodule Odyssey.DB.Term do
+  @moduledoc """
+  A custom Ecto type for storing arbitrary BEAM terms in the database.
+  """
+
   use Ecto.Type
 
   @spec type() :: module()

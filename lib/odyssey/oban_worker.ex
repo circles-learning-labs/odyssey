@@ -1,8 +1,12 @@
 defmodule Odyssey.ObanWorker do
+  @moduledoc """
+  An Oban worker that, when run, executes the next phase of a workflow.
+  """
+
   use Oban.Worker,
     queue: :odyssey_workers,
     unique: [
-      keys: [:id]
+      keys: [:id, :phase]
     ]
 
   alias Odyssey.DB.WorkflowRun

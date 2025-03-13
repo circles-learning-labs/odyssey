@@ -1,4 +1,7 @@
 defmodule Odyssey.DB.WorkflowRun do
+  @moduledoc """
+  A workflow run is a a single run of a specified workflow.
+  """
   use Ecto.Schema
 
   import Ecto.Changeset
@@ -26,7 +29,7 @@ defmodule Odyssey.DB.WorkflowRun do
           next_phase: integer(),
           started_at: DateTime.t(),
           ended_at: DateTime.t() | nil,
-          state: State.t(),
+          state: term(),
           phases: Workflow.t(),
           status: status(),
           inserted_at: DateTime.t(),
@@ -52,8 +55,8 @@ defmodule Odyssey.DB.WorkflowRun do
   end
 
   @spec update(t(), status(), State.t()) :: t()
-  def update(workflow_run, new_status, state) do
-    next_phase = workflow_run.next_phase + 1
+  def update(workflow_run, new_status, next_phase \\ nil, state) do
+    next_phase = next_phase || workflow_run.next_phase + 1
 
     new_status =
       if next_phase >= length(workflow_run.phases) do

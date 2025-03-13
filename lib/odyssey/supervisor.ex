@@ -1,4 +1,8 @@
 defmodule Odyssey.Supervisor do
+  @moduledoc """
+  The supervisor for the Odyssey application.
+  """
+
   use Supervisor
 
   def start_link do

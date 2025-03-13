@@ -1,4 +1,8 @@
 defmodule Odyssey.Workflow do
+  @moduledoc """
+  A workflow is a sequence of phases that are executed in order.
+  """
+
   alias Odyssey.DB.WorkflowRun
   alias Odyssey.Phase
   alias Odyssey.Repo
@@ -21,7 +25,7 @@ defmodule Odyssey.Workflow do
       ) do
     case Enum.at(phases, next_phase) do
       nil ->
-        WorkflowRun.update(workflow_run, :completed, state)
+        WorkflowRun.update(workflow_run, :completed, workflow_run.next_phase, state)
 
       phase ->
         phase
@@ -64,8 +68,9 @@ defmodule Odyssey.Workflow do
   end
 
   defp handle_phase_result({{:suspend, period}, state}, workflow_run) do
-    WorkflowRun.update(workflow_run, :suspended, state)
-    Scheduler.schedule(workflow_run, schedule_in: period)
+    workflow_run
+    |> WorkflowRun.update(:suspended, state)
+    |> Scheduler.schedule(schedule_in: period)
   end
 
   defp handle_phase_result({:stop, state}, workflow_run) do

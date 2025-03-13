@@ -1,4 +1,8 @@
 defmodule Odyssey.Phase do
+  @moduledoc """
+  A phase is a single step in a workflow.
+  """
+
   alias Odyssey.State
 
   @type result ::
