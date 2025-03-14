@@ -30,4 +30,17 @@ defmodule Odyssey.Phases do
       {{:suspend, pause_time}, state}
     end
   end
+
+  defmodule Stop do
+    @moduledoc """
+    A phase that stops the workflow
+    """
+
+    @behaviour Phase
+
+    @impl Phase
+    def run(_args, state) do
+      {:stop, state}
+    end
+  end
 end

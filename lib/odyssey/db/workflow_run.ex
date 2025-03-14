@@ -20,6 +20,7 @@ defmodule Odyssey.DB.WorkflowRun do
     field(:ended_at, :utc_datetime_usec)
     field(:phases, Term)
     field(:state, Term)
+    field(:oban_job_id, :integer)
     timestamps()
   end
 
@@ -32,13 +33,14 @@ defmodule Odyssey.DB.WorkflowRun do
           state: term(),
           phases: Workflow.t(),
           status: status(),
+          oban_job_id: integer(),
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
         }
 
   def changeset(workflow_run, attrs) do
     workflow_run
-    |> cast(attrs, [:status, :next_phase, :started_at, :ended_at, :state, :phases])
+    |> cast(attrs, [:status, :next_phase, :started_at, :ended_at, :state, :phases, :oban_job_id])
     |> validate_required([:status, :next_phase, :started_at, :state, :phases])
   end
 
@@ -79,6 +81,18 @@ defmodule Odyssey.DB.WorkflowRun do
       state: state,
       ended_at: ended_at
     })
+    |> Repo.update!()
+  end
+
+  def jump_to_phase(workflow_run, phase) do
+    workflow_run
+    |> changeset(%{next_phase: phase, status: :running})
+    |> Repo.update!()
+  end
+
+  def set_oban_id(workflow_run, oban_id) do
+    workflow_run
+    |> changeset(%{oban_job_id: oban_id})
     |> Repo.update!()
   end
 end

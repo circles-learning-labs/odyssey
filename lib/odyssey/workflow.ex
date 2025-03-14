@@ -14,8 +14,12 @@ defmodule Odyssey.Workflow do
 
   @spec start(t(), State.t()) :: WorkflowRun.t()
   def start(workflow, state) do
-    workflow_run = WorkflowRun.insert_new(workflow, state)
-    {:ok, _} = Scheduler.schedule(workflow_run)
+    {:ok, workflow_run} =
+      Repo.transaction(fn ->
+        WorkflowRun.insert_new(workflow, state)
+        |> run_immediate()
+      end)
+
     workflow_run
   end
 
@@ -49,12 +53,27 @@ defmodule Odyssey.Workflow do
     end)
   end
 
-  @spec jump_to(id(), non_neg_integer()) :: :ok
-  def jump_to(_id, _phase) do
-    # TODO
-    :ok
+  @spec jump_to(id(), non_neg_integer()) :: WorkflowRun.t() | nil
+  def jump_to(id, phase) do
+    {:ok, workflow_run} =
+      Repo.transaction(fn ->
+        case Repo.get(WorkflowRun, id) do
+          %WorkflowRun{status: status} = workflow_run when status in [:running, :suspended] ->
+            Scheduler.cancel(workflow_run)
+
+            workflow_run
+            |> WorkflowRun.jump_to_phase(phase)
+            |> run_immediate()
+
+          _ ->
+            nil
+        end
+      end)
+
+    workflow_run
   end
 
+  @spec handle_phase_result(Phase.result(), WorkflowRun.t()) :: WorkflowRun.t()
   defp handle_phase_result({:ok, state}, workflow_run) do
     workflow_run
     |> WorkflowRun.update(:running, state)
@@ -68,9 +87,14 @@ defmodule Odyssey.Workflow do
   end
 
   defp handle_phase_result({{:suspend, period}, state}, workflow_run) do
+    {:ok, workflow_run} =
+      Repo.transaction(fn ->
+        workflow_run = WorkflowRun.update(workflow_run, :suspended, state)
+        {:ok, oban_job} = Scheduler.schedule(workflow_run, schedule_in: period)
+        WorkflowRun.set_oban_id(workflow_run, oban_job.id)
+      end)
+
     workflow_run
-    |> WorkflowRun.update(:suspended, state)
-    |> Scheduler.schedule(schedule_in: period)
   end
 
   defp handle_phase_result({:stop, state}, workflow_run) do
@@ -80,5 +104,10 @@ defmodule Odyssey.Workflow do
   defp handle_phase_result({:error, reason, state}, workflow_run) do
     WorkflowRun.update(workflow_run, :error, state)
     {:error, reason}
+  end
+
+  defp run_immediate(workflow_run) do
+    {:ok, oban_job} = Scheduler.schedule(workflow_run)
+    WorkflowRun.set_oban_id(workflow_run, oban_job.id)
   end
 end
