@@ -7,7 +7,7 @@ defmodule Odyssey.MixProject do
     [
       app: :odyssey,
       description: "A workflow engine for Elixir",
-      version: "0.1.1",
+      version: "0.1.2",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
