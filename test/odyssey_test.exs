@@ -127,4 +127,38 @@ defmodule OdysseyTest do
       assert Repo.get(WorkflowRun, id).state == 0
     end
   end
+
+  describe "runs/2" do
+    setup do
+      WorkflowRun
+      |> Repo.delete_all()
+
+      :ok
+    end
+
+    test "get currently active runs when non active" do
+      assert Workflow.runs([:running]) == []
+    end
+
+    test "get currently active runs when active" do
+      workflow = [%Phase{module: Pause, args: 4}, %Phase{module: AddValue, args: 1}]
+      run = Workflow.start(workflow, 0)
+
+      assert_eventually(Repo.get(WorkflowRun, run.id).status == :suspended, 2_000)
+      [db_run] = Workflow.runs([:suspended])
+      assert db_run.id == run.id
+      assert db_run.state == 0
+      assert db_run.next_phase == 1
+      assert db_run.phases == run.phases
+    end
+
+    test "limit the number of runs returned" do
+      workflow = [%Phase{module: Pause, args: 4}, %Phase{module: AddValue, args: 1}]
+      ids = 1..3 |> Enum.map(fn _ -> Workflow.start(workflow, 0) end) |> Enum.map(& &1.id)
+
+      [run1, run2] = Workflow.runs(:all, 2)
+      assert run1.id in ids
+      assert run2.id in ids
+    end
+  end
 end

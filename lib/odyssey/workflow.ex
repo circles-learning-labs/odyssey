@@ -73,6 +73,11 @@ defmodule Odyssey.Workflow do
     workflow_run
   end
 
+  @spec runs([WorkflowRun.status()] | :all, non_neg_integer()) :: [WorkflowRun.t()]
+  def runs(statuses, limit \\ 100) do
+    WorkflowRun.by_statuses(statuses, limit)
+  end
+
   @spec handle_phase_result(Phase.result(), WorkflowRun.t()) :: WorkflowRun.t()
   defp handle_phase_result({:ok, state}, workflow_run) do
     workflow_run

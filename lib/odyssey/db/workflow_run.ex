@@ -5,6 +5,7 @@ defmodule Odyssey.DB.WorkflowRun do
   use Ecto.Schema
 
   import Ecto.Changeset
+  import Ecto.Query
 
   alias Odyssey.DB.Term
   alias Odyssey.Repo
@@ -94,5 +95,23 @@ defmodule Odyssey.DB.WorkflowRun do
     workflow_run
     |> changeset(%{oban_job_id: oban_id})
     |> Repo.update!()
+  end
+
+  def by_statuses(:all, limit) do
+    __MODULE__
+    |> order_limit(limit)
+  end
+
+  def by_statuses(statuses, limit) do
+    __MODULE__
+    |> where([w], w.status in ^statuses)
+    |> order_limit(limit)
+  end
+
+  defp order_limit(query, limit) do
+    query
+    |> order_by(desc: :started_at)
+    |> limit(^limit)
+    |> Repo.all()
   end
 end
