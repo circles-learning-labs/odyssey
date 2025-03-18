@@ -43,4 +43,18 @@ defmodule Odyssey.Phases do
       {:stop, state}
     end
   end
+
+  defmodule Slow do
+    @moduledoc """
+    A phase that takes a long time to run
+    """
+
+    @behaviour Phase
+
+    @impl Phase
+    def run(sleep_time, state) do
+      Process.sleep(sleep_time)
+      {:ok, state}
+    end
+  end
 end

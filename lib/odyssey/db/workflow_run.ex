@@ -12,10 +12,10 @@ defmodule Odyssey.DB.WorkflowRun do
   alias Odyssey.State
   alias Odyssey.Workflow
 
-  @type status :: :running | :suspended | :paused | :completed | :error
+  @type status :: :running | :suspended | :completed | :error
 
   schema "odyssey_workflow_runs" do
-    field(:status, Ecto.Enum, values: [:running, :suspended, :paused, :completed, :error])
+    field(:status, Ecto.Enum, values: [:running, :suspended, :completed, :error])
     field(:next_phase, :integer)
     field(:started_at, :utc_datetime_usec)
     field(:ended_at, :utc_datetime_usec)

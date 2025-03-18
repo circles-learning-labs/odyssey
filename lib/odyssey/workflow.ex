@@ -40,22 +40,25 @@ defmodule Odyssey.Workflow do
 
   @spec stop(id()) :: WorkflowRun.t() | nil
   def stop(id) do
-    Repo.transaction(fn ->
-      case Repo.get(WorkflowRun, id) do
-        %WorkflowRun{status: status, state: state} = workflow_run
-        when status in [:running, :suspended] ->
-          WorkflowRun.update(workflow_run, :completed, state)
-          :ok
+    {:ok, result} =
+      Repo.transaction(fn ->
+        case Repo.get(WorkflowRun, id) do
+          %WorkflowRun{status: status, state: state} = workflow_run
+          when status in [:running, :suspended] ->
+            Scheduler.cancel(workflow_run)
+            WorkflowRun.update(workflow_run, :completed, state)
 
-        nil ->
-          nil
-      end
-    end)
+          nil ->
+            nil
+        end
+      end)
+
+    result
   end
 
   @spec jump_to(id(), non_neg_integer()) :: WorkflowRun.t() | nil
   def jump_to(id, phase) do
-    {:ok, workflow_run} =
+    {:ok, result} =
       Repo.transaction(fn ->
         case Repo.get(WorkflowRun, id) do
           %WorkflowRun{status: status} = workflow_run when status in [:running, :suspended] ->
@@ -70,7 +73,7 @@ defmodule Odyssey.Workflow do
         end
       end)
 
-    workflow_run
+    result
   end
 
   @spec runs([WorkflowRun.status()] | :all, non_neg_integer()) :: [WorkflowRun.t()]

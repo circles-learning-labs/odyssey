@@ -7,7 +7,7 @@ defmodule OdysseyTest do
   alias Odyssey.Phase
   alias Odyssey.Phases.AddValue
   alias Odyssey.Phases.Pause
-  alias Odyssey.Phases.Stop
+  alias Odyssey.Phases.Slow
   alias Odyssey.Repo
   alias Odyssey.Workflow
 
@@ -54,24 +54,37 @@ defmodule OdysseyTest do
     assert workflow_run.state == 1
   end
 
-  test "stop a paused workflow" do
-    workflow = [%Phase{module: Pause, args: 3}, %Phase{module: AddValue, args: 1}]
+  describe "stop/1" do
+    test "stop a paused workflow" do
+      workflow = [%Phase{module: Pause, args: 3}, %Phase{module: AddValue, args: 1}]
 
-    %WorkflowRun{id: id} = Workflow.start(workflow, 0)
-    Workflow.stop(id)
+      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.stop(id)
 
-    assert Repo.get(WorkflowRun, id).status == :completed
-    Process.sleep(5_000)
-    assert Repo.get(WorkflowRun, id).state == 0
-  end
+      assert Repo.get(WorkflowRun, id).status == :completed
+      Process.sleep(5_000)
+      assert Repo.get(WorkflowRun, id).state == 0
+    end
 
-  test "stop a workflow" do
-    workflow = [%Phase{module: Stop, args: 1}, %Phase{module: AddValue, args: 1}]
+    test "stop a running workflow" do
+      workflow = [
+        %Phase{module: AddValue, args: 1},
+        %Phase{module: Slow, args: 5_000},
+        %Phase{module: AddValue, args: 1}
+      ]
 
-    %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      assert_eventually(Repo.get(WorkflowRun, id).state == 1)
 
-    assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
-    assert Repo.get(WorkflowRun, id).state == 0
+      Workflow.stop(id)
+
+      assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
+      assert Repo.get(WorkflowRun, id).state == 1
+    end
+
+    test "stop a non-existant workflow" do
+      assert Workflow.stop(-1) == nil
+    end
   end
 
   describe "jump_to/2" do
