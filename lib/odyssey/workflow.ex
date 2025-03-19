@@ -5,7 +5,6 @@ defmodule Odyssey.Workflow do
 
   alias Odyssey.DB.WorkflowRun
   alias Odyssey.Phase
-  alias Odyssey.Repo
   alias Odyssey.Scheduler
   alias Odyssey.State
 
@@ -15,7 +14,7 @@ defmodule Odyssey.Workflow do
   @spec start(t(), State.t()) :: WorkflowRun.t()
   def start(workflow, state) do
     {:ok, workflow_run} =
-      Repo.transaction(fn ->
+      Odyssey.repo().transaction(fn ->
         WorkflowRun.insert_new(workflow, state)
         |> run_immediate()
       end)
@@ -41,8 +40,8 @@ defmodule Odyssey.Workflow do
   @spec stop(id()) :: WorkflowRun.t() | nil
   def stop(id) do
     {:ok, result} =
-      Repo.transaction(fn ->
-        case Repo.get(WorkflowRun, id) do
+      Odyssey.repo().transaction(fn ->
+        case Odyssey.repo().get(WorkflowRun, id) do
           %WorkflowRun{status: status, state: state} = workflow_run
           when status in [:running, :suspended] ->
             Scheduler.cancel(workflow_run)
@@ -59,8 +58,8 @@ defmodule Odyssey.Workflow do
   @spec jump_to(id(), non_neg_integer()) :: WorkflowRun.t() | nil
   def jump_to(id, phase) do
     {:ok, result} =
-      Repo.transaction(fn ->
-        case Repo.get(WorkflowRun, id) do
+      Odyssey.repo().transaction(fn ->
+        case Odyssey.repo().get(WorkflowRun, id) do
           %WorkflowRun{status: status} = workflow_run when status in [:running, :suspended] ->
             Scheduler.cancel(workflow_run)
 
@@ -96,7 +95,7 @@ defmodule Odyssey.Workflow do
 
   defp handle_phase_result({{:suspend, period}, state}, workflow_run) do
     {:ok, workflow_run} =
-      Repo.transaction(fn ->
+      Odyssey.repo().transaction(fn ->
         workflow_run = WorkflowRun.update(workflow_run, :suspended, state)
         {:ok, oban_job} = Scheduler.schedule(workflow_run, schedule_in: period)
         WorkflowRun.set_oban_id(workflow_run, oban_job.id)

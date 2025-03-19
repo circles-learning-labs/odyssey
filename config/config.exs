@@ -1,7 +1,5 @@
 import Config
 
-config :odyssey, ecto_repos: [Odyssey.Repo]
-
 config :odyssey, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,

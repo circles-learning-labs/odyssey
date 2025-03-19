@@ -11,7 +11,6 @@ defmodule Odyssey.Supervisor do
 
   def init(opts) do
     [
-      {Odyssey.Repo, []},
       {Oban, Application.fetch_env!(opts[:otp_app], Oban)}
     ]
     |> Supervisor.init(strategy: :one_for_one)

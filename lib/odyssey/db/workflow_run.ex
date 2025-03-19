@@ -8,7 +8,6 @@ defmodule Odyssey.DB.WorkflowRun do
   import Ecto.Query
 
   alias Odyssey.DB.Term
-  alias Odyssey.Repo
   alias Odyssey.State
   alias Odyssey.Workflow
 
@@ -54,7 +53,7 @@ defmodule Odyssey.DB.WorkflowRun do
       state: state,
       phases: workflow
     })
-    |> Repo.insert!()
+    |> Odyssey.repo().insert!()
   end
 
   @spec update(t(), status(), State.t()) :: t()
@@ -82,19 +81,19 @@ defmodule Odyssey.DB.WorkflowRun do
       state: state,
       ended_at: ended_at
     })
-    |> Repo.update!()
+    |> Odyssey.repo().update!()
   end
 
   def jump_to_phase(workflow_run, phase) do
     workflow_run
     |> changeset(%{next_phase: phase, status: :running})
-    |> Repo.update!()
+    |> Odyssey.repo().update!()
   end
 
   def set_oban_id(workflow_run, oban_id) do
     workflow_run
     |> changeset(%{oban_job_id: oban_id})
-    |> Repo.update!()
+    |> Odyssey.repo().update!()
   end
 
   def by_statuses(:all, limit) do
@@ -112,6 +111,6 @@ defmodule Odyssey.DB.WorkflowRun do
     query
     |> order_by(desc: :started_at)
     |> limit(^limit)
-    |> Repo.all()
+    |> Odyssey.repo().all()
   end
 end
