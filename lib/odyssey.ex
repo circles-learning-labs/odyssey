@@ -4,6 +4,7 @@ defmodule Odyssey do
   """
 
   def start(_type, _args) do
-    Odyssey.Supervisor.start_link()
+    otp_app = Application.get_env(:odyssey, :otp_app, :odyssey)
+    Odyssey.Supervisor.start_link(otp_app: otp_app)
   end
 end

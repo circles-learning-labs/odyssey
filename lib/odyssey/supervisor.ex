@@ -5,14 +5,14 @@ defmodule Odyssey.Supervisor do
 
   use Supervisor
 
-  def start_link do
-    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link(opts) do
+    Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def init(_) do
+  def init(opts) do
     [
       {Odyssey.Repo, []},
-      {Oban, Application.fetch_env!(:odyssey, Oban)}
+      {Oban, Application.fetch_env!(opts[:otp_app], Oban)}
     ]
     |> Supervisor.init(strategy: :one_for_one)
   end
