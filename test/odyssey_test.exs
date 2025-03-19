@@ -6,6 +6,7 @@ defmodule OdysseyTest do
   alias Odyssey.DB.WorkflowRun
   alias Odyssey.Phase
   alias Odyssey.Phases.AddValue
+  alias Odyssey.Phases.CallFun
   alias Odyssey.Phases.Pause
   alias Odyssey.Phases.Slow
   alias Odyssey.Repo
@@ -39,6 +40,15 @@ defmodule OdysseyTest do
 
     workflow_run = Repo.get(WorkflowRun, id)
     assert workflow_run.state == 3
+  end
+
+  test "null state" do
+    self = self()
+    workflow = [%Phase{module: CallFun, args: fn _ -> send(self, :run) end}]
+
+    %WorkflowRun{id: id} = Workflow.start(workflow, nil)
+    assert_receive(:run, 3_000)
+    assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 4_000)
   end
 
   test "pause workflow phase" do

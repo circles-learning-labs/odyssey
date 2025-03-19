@@ -11,12 +11,11 @@ defmodule Odyssey.ObanWorker do
     ]
 
   alias Odyssey.DB.WorkflowRun
-  alias Odyssey.Repo
   alias Odyssey.Workflow
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"id" => id}}) do
-    case Repo.get(WorkflowRun, id) do
+    case Odyssey.repo().get(WorkflowRun, id) do
       %WorkflowRun{status: status} = workflow when status in [:running, :suspended] ->
         Workflow.run_next_phase(%{workflow | status: :running})
 

@@ -57,4 +57,18 @@ defmodule Odyssey.Phases do
       {:ok, state}
     end
   end
+
+  defmodule CallFun do
+    @moduledoc """
+    A phase that calls a function
+    """
+
+    @behaviour Phase
+
+    @impl Phase
+    def run(fun, state) do
+      fun.(state)
+      {:ok, state}
+    end
+  end
 end

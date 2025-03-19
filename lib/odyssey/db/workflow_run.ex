@@ -41,7 +41,7 @@ defmodule Odyssey.DB.WorkflowRun do
   def changeset(workflow_run, attrs) do
     workflow_run
     |> cast(attrs, [:status, :next_phase, :started_at, :ended_at, :state, :phases, :oban_job_id])
-    |> validate_required([:status, :next_phase, :started_at, :state, :phases])
+    |> validate_required([:status, :next_phase, :started_at, :phases])
   end
 
   def insert_new(workflow, state) do

@@ -7,7 +7,7 @@ defmodule Odyssey.Repo.Migrations.Initial do
       add :next_phase, :integer, null: false
       add :started_at, :utc_datetime_usec, null: false
       add :ended_at, :utc_datetime_usec
-      add :state, :binary, null: false
+      add :state, :binary
       add :phases, :binary, null: false
       add :oban_job_id, :integer
       timestamps()
