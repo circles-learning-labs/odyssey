@@ -3,6 +3,7 @@ defmodule Odyssey.Repo.Migrations.Initial do
 
   def change do
     create table(:odyssey_workflow_runs) do
+      add :name, :string
       add :status, :string, null: false
       add :next_phase, :integer, null: false
       add :started_at, :utc_datetime_usec, null: false

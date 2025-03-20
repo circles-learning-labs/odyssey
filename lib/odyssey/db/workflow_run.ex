@@ -14,6 +14,7 @@ defmodule Odyssey.DB.WorkflowRun do
   @type status :: :running | :suspended | :completed | :error
 
   schema "odyssey_workflow_runs" do
+    field(:name, :string)
     field(:status, Ecto.Enum, values: [:running, :suspended, :completed, :error])
     field(:next_phase, :integer)
     field(:started_at, :utc_datetime_usec)
@@ -25,8 +26,8 @@ defmodule Odyssey.DB.WorkflowRun do
   end
 
   @type t :: %__MODULE__{
-          __meta__: Ecto.Schema.Metadata.t(),
           id: integer(),
+          name: String.t(),
           next_phase: integer(),
           started_at: DateTime.t(),
           ended_at: DateTime.t() | nil,
@@ -40,13 +41,23 @@ defmodule Odyssey.DB.WorkflowRun do
 
   def changeset(workflow_run, attrs) do
     workflow_run
-    |> cast(attrs, [:status, :next_phase, :started_at, :ended_at, :state, :phases, :oban_job_id])
+    |> cast(attrs, [
+      :name,
+      :status,
+      :next_phase,
+      :started_at,
+      :ended_at,
+      :state,
+      :phases,
+      :oban_job_id
+    ])
     |> validate_required([:status, :next_phase, :started_at, :phases])
   end
 
-  def insert_new(workflow, state) do
+  def insert_new(workflow, name, state) do
     %__MODULE__{}
     |> changeset(%{
+      name: name,
       status: :running,
       next_phase: 0,
       started_at: DateTime.utc_now(),
@@ -104,6 +115,12 @@ defmodule Odyssey.DB.WorkflowRun do
   def by_statuses(statuses, limit) do
     __MODULE__
     |> where([w], w.status in ^statuses)
+    |> order_limit(limit)
+  end
+
+  def by_name(name, limit) do
+    __MODULE__
+    |> where([w], w.name == ^name)
     |> order_limit(limit)
   end
 

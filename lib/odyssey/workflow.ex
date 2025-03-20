@@ -11,11 +11,12 @@ defmodule Odyssey.Workflow do
   @type id :: term()
   @type t :: [Phase.t()]
 
-  @spec start(t(), State.t()) :: WorkflowRun.t()
-  def start(workflow, state) do
+  @spec start(t(), String.t() | nil, State.t()) :: WorkflowRun.t()
+  def start(workflow, name \\ nil, state) do
     {:ok, workflow_run} =
       Odyssey.repo().transaction(fn ->
-        WorkflowRun.insert_new(workflow, state)
+        workflow
+        |> WorkflowRun.insert_new(name, state)
         |> run_immediate()
       end)
 
