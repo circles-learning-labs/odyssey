@@ -25,13 +25,6 @@ defmodule Odyssey.MixProject do
     ]
   end
 
-  def application do
-    [
-      mod: {Odyssey, []},
-      extra_applications: [:logger]
-    ]
-  end
-
   def package do
     [
       name: "odyssey",
