@@ -5,9 +5,10 @@ defmodule Odyssey.DB.WorkflowRun do
   use Ecto.Schema
 
   import Ecto.Changeset
-  import Ecto.Query
+  import Ecto.Query, only: [where: 3, order_by: 2, limit: 2]
 
   alias Odyssey.DB.Term
+  alias Odyssey.Phase
   alias Odyssey.State
   alias Odyssey.Workflow
 
@@ -28,7 +29,7 @@ defmodule Odyssey.DB.WorkflowRun do
   @type t :: %__MODULE__{
           id: integer(),
           name: String.t(),
-          next_phase: integer(),
+          next_phase: Phase.index(),
           started_at: DateTime.t(),
           ended_at: DateTime.t() | nil,
           state: term(),
@@ -72,7 +73,7 @@ defmodule Odyssey.DB.WorkflowRun do
     next_phase = next_phase || workflow_run.next_phase + 1
 
     new_status =
-      if next_phase >= length(workflow_run.phases) do
+      if next_phase >= length(workflow_run.phases) and new_status != :error do
         :completed
       else
         new_status
@@ -95,10 +96,24 @@ defmodule Odyssey.DB.WorkflowRun do
     |> Odyssey.repo().update!()
   end
 
-  def jump_to_phase(workflow_run, phase) do
+  @spec jump_to_index(t(), Phase.index()) :: t()
+  def jump_to_index(workflow_run, index) do
     workflow_run
-    |> changeset(%{next_phase: phase, status: :running})
+    |> changeset(%{next_phase: index, status: :running})
     |> Odyssey.repo().update!()
+  end
+
+  @spec jump_to_phase(t(), Phase.id()) :: t()
+  def jump_to_phase(workflow_run, phase_id) do
+    case Enum.find_index(workflow_run.phases, &(&1.id == phase_id)) do
+      nil ->
+        update(workflow_run, :error, workflow_run.state)
+        {:error, "Phase ID #{inspect(phase_id)} not found in workflow"}
+
+      index ->
+        workflow_run
+        |> jump_to_index(index)
+    end
   end
 
   def set_oban_id(workflow_run, oban_id) do

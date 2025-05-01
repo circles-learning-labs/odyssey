@@ -7,6 +7,7 @@ defmodule OdysseyTest do
   alias Odyssey.Phase
   alias Odyssey.Phases.AddValue
   alias Odyssey.Phases.CallFun
+  alias Odyssey.Phases.JumpToPhase
   alias Odyssey.Phases.Pause
   alias Odyssey.Phases.Slow
   alias Odyssey.Repo
@@ -17,7 +18,7 @@ defmodule OdysseyTest do
 
     start = DateTime.utc_now()
 
-    %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+    %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
 
     assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
 
@@ -34,7 +35,7 @@ defmodule OdysseyTest do
   test "multi-step workflow" do
     workflow = [%Phase{module: AddValue, args: 1}, %Phase{module: AddValue, args: 2}]
 
-    %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+    %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
 
     assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
 
@@ -42,11 +43,21 @@ defmodule OdysseyTest do
     assert workflow_run.state == 3
   end
 
+  test "phases with duplicate IDs" do
+    workflow = [
+      %Phase{id: :duplicate, module: AddValue, args: 1},
+      %Phase{id: :duplicate, module: AddValue, args: 2}
+    ]
+
+    {:error, error} = Workflow.start(workflow, 0)
+    assert error =~ "duplicate phase ID"
+  end
+
   test "null state" do
     self = self()
     workflow = [%Phase{module: CallFun, args: fn _ -> send(self, :run) end}]
 
-    %WorkflowRun{id: id} = Workflow.start(workflow, nil)
+    %WorkflowRun{id: id} = Workflow.start!(workflow, nil)
     assert_receive(:run, 3_000)
     assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 4_000)
   end
@@ -54,7 +65,7 @@ defmodule OdysseyTest do
   test "pause workflow phase" do
     workflow = [%Phase{module: Pause, args: 2}, %Phase{module: AddValue, args: 1}]
 
-    %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+    %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
 
     Process.sleep(1_000)
     assert Repo.get(WorkflowRun, id).status == :suspended
@@ -64,11 +75,58 @@ defmodule OdysseyTest do
     assert workflow_run.state == 1
   end
 
+  describe ":jump return type" do
+    test "phases with jump" do
+      workflow = [
+        %Phase{module: AddValue, args: 1},
+        %Phase{module: JumpToPhase, args: :final},
+        %Phase{module: AddValue, args: 50},
+        %Phase{id: :final, module: AddValue, args: 1}
+      ]
+
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
+
+      assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
+
+      workflow_run = Repo.get(WorkflowRun, id)
+      assert workflow_run.state == 2
+    end
+
+    test "jump with invalid id" do
+      workflow = [
+        %Phase{module: AddValue, args: 1},
+        %Phase{module: JumpToPhase, args: :invalid}
+      ]
+
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
+
+      assert_eventually(Repo.get(WorkflowRun, id).status == :error, 3_000)
+
+      workflow_run = Repo.get(WorkflowRun, id)
+      assert workflow_run.state == 1
+    end
+
+    test "jump to a nil phase id" do
+      workflow = [
+        %Phase{module: AddValue, args: 1},
+        %Phase{module: JumpToPhase, args: nil},
+        %Phase{id: nil, module: AddValue, args: 1}
+      ]
+
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
+
+      assert_eventually(Repo.get(WorkflowRun, id).status == :error, 3_000)
+
+      workflow_run = Repo.get(WorkflowRun, id)
+      assert workflow_run.state == 1
+    end
+  end
+
   describe "stop/1" do
     test "stop a paused workflow" do
       workflow = [%Phase{module: Pause, args: 3}, %Phase{module: AddValue, args: 1}]
 
-      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
       %WorkflowRun{id: id} = Workflow.stop(id)
 
       assert Repo.get(WorkflowRun, id).status == :completed
@@ -83,7 +141,7 @@ defmodule OdysseyTest do
         %Phase{module: AddValue, args: 1}
       ]
 
-      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
       assert_eventually(Repo.get(WorkflowRun, id).state == 1)
 
       Workflow.stop(id)
@@ -100,7 +158,7 @@ defmodule OdysseyTest do
   describe "jump_to/2" do
     test "jump to future phase" do
       workflow = [%Phase{module: Pause, args: 60}, %Phase{module: AddValue, args: 1}]
-      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
       Workflow.jump_to(id, 1)
 
       assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
@@ -114,7 +172,7 @@ defmodule OdysseyTest do
         %Phase{module: AddValue, args: 500}
       ]
 
-      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
       assert_eventually(Repo.get(WorkflowRun, id).status == :suspended, 3_000)
 
       Workflow.jump_to(id, 0)
@@ -126,7 +184,7 @@ defmodule OdysseyTest do
     test "jump to current phase" do
       workflow = [%Phase{module: Pause, args: 4}, %Phase{module: AddValue, args: 1}]
 
-      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
       Process.sleep(2_000)
 
       Workflow.jump_to(id, 0)
@@ -142,7 +200,7 @@ defmodule OdysseyTest do
 
     test "jump to non-existent phase" do
       workflow = [%Phase{module: Pause, args: 4}, %Phase{module: AddValue, args: 1}]
-      %WorkflowRun{id: id} = Workflow.start(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
       assert_eventually(Repo.get(WorkflowRun, id).status == :suspended, 2_000)
 
       Workflow.jump_to(id, 5)
@@ -165,7 +223,7 @@ defmodule OdysseyTest do
 
     test "get currently active runs when active" do
       workflow = [%Phase{module: Pause, args: 4}, %Phase{module: AddValue, args: 1}]
-      run = Workflow.start(workflow, 0)
+      run = Workflow.start!(workflow, 0)
 
       assert_eventually(Repo.get(WorkflowRun, run.id).status == :suspended, 2_000)
       [db_run] = Workflow.runs([:suspended])
@@ -177,7 +235,7 @@ defmodule OdysseyTest do
 
     test "limit the number of runs returned" do
       workflow = [%Phase{module: Pause, args: 4}, %Phase{module: AddValue, args: 1}]
-      ids = 1..3 |> Enum.map(fn _ -> Workflow.start(workflow, 0) end) |> Enum.map(& &1.id)
+      ids = 1..3 |> Enum.map(fn _ -> Workflow.start!(workflow, 0) end) |> Enum.map(& &1.id)
 
       [run1, run2] = Workflow.runs(:all, 2)
       assert run1.id in ids

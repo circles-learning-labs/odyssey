@@ -11,19 +11,33 @@ defmodule Odyssey.Workflow do
   @type id :: term()
   @type t :: [Phase.t()]
 
-  @spec start(t(), String.t() | nil, State.t()) :: WorkflowRun.t()
-  def start(workflow, name \\ nil, state) do
-    {:ok, workflow_run} =
-      Odyssey.repo().transaction(fn ->
-        workflow
-        |> WorkflowRun.insert_new(name, state)
-        |> run_immediate()
-      end)
+  @spec start!(t(), String.t() | nil, State.t()) :: WorkflowRun.t()
+  def start!(workflow, name \\ nil, state) do
+    case start(workflow, name, state) do
+      {:ok, workflow_run} ->
+        workflow_run
 
-    workflow_run
+      {:error, reason} ->
+        raise "Failed to start workflow: #{inspect(reason)}"
+    end
   end
 
-  @spec run_next_phase(WorkflowRun.t()) :: WorkflowRun.t()
+  @spec start(t(), String.t() | nil, State.t()) :: {:ok, WorkflowRun.t()} | {:error, term()}
+  def start(workflow, name \\ nil, state) do
+    case validate_workflow(workflow) do
+      :ok ->
+        Odyssey.repo().transaction(fn ->
+          workflow
+          |> WorkflowRun.insert_new(name, state)
+          |> run_immediate()
+        end)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @spec run_next_phase(WorkflowRun.t()) :: WorkflowRun.t() | {:error, term()}
   def run_next_phase(
         %WorkflowRun{next_phase: next_phase, phases: phases, state: state} = workflow_run
       ) do
@@ -37,6 +51,8 @@ defmodule Odyssey.Workflow do
         |> handle_phase_result(workflow_run)
     end
   end
+
+  def run_next_phase({:error, _error} = e), do: e
 
   @spec stop(id()) :: WorkflowRun.t() | nil
   def stop(id) do
@@ -56,16 +72,16 @@ defmodule Odyssey.Workflow do
     result
   end
 
-  @spec jump_to(id(), non_neg_integer()) :: WorkflowRun.t() | nil
-  def jump_to(id, phase) do
+  @spec jump_to(id(), Phase.index()) :: WorkflowRun.t() | nil
+  def jump_to(workflow_id, index) do
     {:ok, result} =
       Odyssey.repo().transaction(fn ->
-        case Odyssey.repo().get(WorkflowRun, id) do
+        case Odyssey.repo().get(WorkflowRun, workflow_id) do
           %WorkflowRun{status: status} = workflow_run when status in [:running, :suspended] ->
             Scheduler.cancel(workflow_run)
 
             workflow_run
-            |> WorkflowRun.jump_to_phase(phase)
+            |> WorkflowRun.jump_to_index(index)
             |> run_immediate()
 
           _ ->
@@ -94,6 +110,17 @@ defmodule Odyssey.Workflow do
     # In this case it is up to the job to handle its own resumption
   end
 
+  defp handle_phase_result({{:jump, nil}, state}, workflow_run) do
+    WorkflowRun.update(workflow_run, :error, state)
+  end
+
+  defp handle_phase_result({{:jump, phase_id}, state}, workflow_run) do
+    workflow_run
+    |> WorkflowRun.update(:running, state)
+    |> WorkflowRun.jump_to_phase(phase_id)
+    |> run_next_phase()
+  end
+
   defp handle_phase_result({{:suspend, period}, state}, workflow_run) do
     {:ok, workflow_run} =
       Odyssey.repo().transaction(fn ->
@@ -109,7 +136,7 @@ defmodule Odyssey.Workflow do
     WorkflowRun.update(workflow_run, :completed, state)
   end
 
-  defp handle_phase_result({:error, reason, state}, workflow_run) do
+  defp handle_phase_result({{:error, reason}, state}, workflow_run) do
     WorkflowRun.update(workflow_run, :error, state)
     {:error, reason}
   end
@@ -117,5 +144,24 @@ defmodule Odyssey.Workflow do
   defp run_immediate(workflow_run) do
     {:ok, oban_job} = Scheduler.schedule(workflow_run)
     WorkflowRun.set_oban_id(workflow_run, oban_job.id)
+  end
+
+  defp validate_workflow(workflow) do
+    with {_, true} <- {:phase, Enum.all?(workflow, &is_struct(&1, Phase))},
+         {_, true} <- {:unique_ids, unique_phase_ids(workflow)} do
+      :ok
+    else
+      {:phase, false} ->
+        {:error, "Workflow contains elements that are not Odyssey.Phase structs"}
+
+      {:unique_ids, false} ->
+        {:error, "Workflow contains duplicate phase IDs"}
+    end
+  end
+
+  defp unique_phase_ids(workflow) do
+    ids = workflow |> Enum.map(& &1.id) |> Enum.reject(&is_nil/1)
+    unique_ids = Enum.uniq(ids)
+    length(ids) == length(unique_ids)
   end
 end

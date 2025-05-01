@@ -31,6 +31,19 @@ defmodule Odyssey.Phases do
     end
   end
 
+  defmodule JumpToPhase do
+    @moduledoc """
+    A phase that jumps to another phase
+    """
+
+    @behaviour Phase
+
+    @impl Phase
+    def run(phase_id, state) do
+      {{:jump, phase_id}, state}
+    end
+  end
+
   defmodule Stop do
     @moduledoc """
     A phase that stops the workflow
