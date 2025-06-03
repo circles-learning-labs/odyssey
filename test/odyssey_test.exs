@@ -62,17 +62,37 @@ defmodule OdysseyTest do
     assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 4_000)
   end
 
-  test "pause workflow phase" do
-    workflow = [%Phase{module: Pause, args: 2}, %Phase{module: AddValue, args: 1}]
+  describe "{:suspend, period} return type" do
+    test "pause workflow phase" do
+      workflow = [%Phase{module: Pause, args: 2}, %Phase{module: AddValue, args: 1}]
 
-    %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
 
-    Process.sleep(1_000)
-    assert Repo.get(WorkflowRun, id).status == :suspended
-    assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 4_000)
+      Process.sleep(1_000)
+      assert Repo.get(WorkflowRun, id).status == :suspended
+      assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 4_000)
 
-    workflow_run = Repo.get(WorkflowRun, id)
-    assert workflow_run.state == 1
+      workflow_run = Repo.get(WorkflowRun, id)
+      assert workflow_run.state == 1
+    end
+
+    test "pause workflow phase after action" do
+      workflow = [
+        %Phase{module: AddValue, args: 1},
+        %Phase{module: Pause, args: 2},
+        %Phase{module: AddValue, args: 1}
+      ]
+
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
+
+      Process.sleep(1_000)
+      assert Repo.get(WorkflowRun, id).status == :suspended
+      assert Repo.get(WorkflowRun, id).state == 1
+      assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 4_000)
+
+      workflow_run = Repo.get(WorkflowRun, id)
+      assert workflow_run.state == 2
+    end
   end
 
   describe ":jump return type" do
