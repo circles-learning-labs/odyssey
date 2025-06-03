@@ -8,6 +8,7 @@ defmodule OdysseyTest do
   alias Odyssey.Phases.AddValue
   alias Odyssey.Phases.CallFun
   alias Odyssey.Phases.JumpToPhase
+  alias Odyssey.Phases.JumpToPhaseIf
   alias Odyssey.Phases.Pause
   alias Odyssey.Phases.Slow
   alias Odyssey.Repo
@@ -110,6 +111,21 @@ defmodule OdysseyTest do
 
       workflow_run = Repo.get(WorkflowRun, id)
       assert workflow_run.state == 2
+    end
+
+    test "jump backwards" do
+      workflow = [
+        %Phase{id: :start, module: AddValue, args: 1},
+        %Phase{module: JumpToPhaseIf, args: {:start, fn s -> s < 5 end}},
+        %Phase{module: AddValue, args: 50}
+      ]
+
+      %WorkflowRun{id: id} = Workflow.start!(workflow, 0)
+
+      assert_eventually(Repo.get(WorkflowRun, id).status == :completed, 3_000)
+
+      workflow_run = Repo.get(WorkflowRun, id)
+      assert workflow_run.state == 55
     end
 
     test "jump with invalid id" do

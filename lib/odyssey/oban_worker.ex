@@ -5,10 +5,7 @@ defmodule Odyssey.ObanWorker do
 
   use Oban.Worker,
     queue: :odyssey_workers,
-    unique: [
-      keys: [:id, :phase],
-      states: [:available, :executing, :scheduled, :retryable]
-    ]
+    unique: false
 
   alias Odyssey.DB.WorkflowRun
   alias Odyssey.Workflow

@@ -44,6 +44,23 @@ defmodule Odyssey.Phases do
     end
   end
 
+  defmodule JumpToPhaseIf do
+    @moduledoc """
+    A phase that conditionally jumps to another phase
+    """
+
+    @behaviour Phase
+
+    @impl Phase
+    def run({phase_id, conditional_fn}, state) do
+      if conditional_fn.(state) do
+        {{:jump, phase_id}, state}
+      else
+        {:ok, state}
+      end
+    end
+  end
+
   defmodule Stop do
     @moduledoc """
     A phase that stops the workflow
