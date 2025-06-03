@@ -1,3 +1,7 @@
+v0.2.1
+
+* Fix backwards jumps in workflows
+
 v0.2.0
 
 * Add support for `jump` return value from phase and phase IDs
